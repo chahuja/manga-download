@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 # Make sure all these libraries are installed before proceeding
 import urlparse as prs
@@ -9,25 +9,10 @@ import urllib2
 import os
 from collections import namedtuple
 import pdb
+from bs4 import BeautifulSoup
 
 
-# In[2]:
-
-def updateSite(site):
-    site_parse = prs.urlparse(site)
-    ext_parse = site_parse.path.split('.')
-    num_parse = ext_parse[0].split('-')
-    # update number
-    num_parse[-1] = str(int(num_parse[-1]) + 1)
-    ext_parse[0] = "-".join(num_parse)
-    site_parse_asdict = site_parse._asdict()
-    site_parse_asdict['path']= ".".join(ext_parse)
-    updated_site = namedtuple('ParseResult', site_parse_asdict.keys())(**site_parse_asdict)
-    updated_site = prs.urlunparse(updated_site)
-    return updated_site
-
-
-# In[3]:
+# In[ ]:
 
 hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -39,20 +24,21 @@ hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML,
 
 # ## User Specific Data
 
-# In[4]:
+# In[ ]:
 
-# Starting Image path on the server
-site = "http://i8.mangareader.net/liar-game/1/liar-game-1846821.jpg"
+# Starting html path of the manga
+site = "http://www.mangareader.net/death-note/1/1"
 # Folder to store the generated images
-folder = 'ch1'
+folder = 'dn'
 ## Make the folder if it is not already made
 try:
     os.makedirs(folder)
 except:
     print("Folder already exists")
-# Hardcoded number of images in each chapter
-MAX_FILES = 224
-count = 0
+# Hardcoded number of chapters
+MAX_CHAP = 109
+chap = 1
+ep = 1
 
 
 # In[ ]:
@@ -62,19 +48,35 @@ Starts with the given site and updates the number in the filename in the image.
 Check each filename until you reach the limit of the number of images in the chapter.
 """
 
-while(count < MAX_FILES):
-    req = urllib2.Request(site, headers=hdr)
-    try:
-        page = urllib2.urlopen(req)
-        content = page.read()
-        count+=1
-        print(count)
-        filename = os.path.join(folder,'%s-%03d.jpg'%(folder,count))
-        with open(filename,'w') as fid:
-            fid.write(content)
-    except:
-        pass
-        
-    # update the number in the site
-    site = updateSite(site)
+site_base = '/'.join(site.split('/'))[:-3]
+
+for chap in range(1,MAX_CHAP+1):
+    ep = 1
+    while(1):
+        # update numbers in the site
+        site = os.path.join(site_base,str(chap),str(ep))
+        # Read the html page with the image
+        req = urllib2.Request(site, headers=hdr)
+        try:
+            page = urllib2.urlopen(req)
+            content = page.read()
+            soup = BeautifulSoup(content, 'html.parser')
+            for link in soup.find_all('img'):
+                url = link.get('src')
+
+            # Read the image url to get the content of the image
+            req = urllib2.Request(url, headers=hdr)
+            page = urllib2.urlopen(req)
+            content = page.read()
+            try:
+                os.makedirs(os.path.join(folder,'%s-%03d'%(folder,chap)))
+            except:
+                pass
+            filename = os.path.join(folder,'%s-%03d'%(folder,chap),'%s-%03d-%03d.jpg'%(folder,chap,ep))
+            ep+=1
+            with open(filename,'w') as fid:
+                fid.write(content)
+        except:
+            break
+    print(chap)    
 
