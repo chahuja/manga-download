@@ -12,7 +12,7 @@ convert *.jpg manga.pdf
 ```
 
 
-At present, only python 2.7 is supported. It may be backwards compatible with python 3, but I have not checked.
+At present, only python 2.7 is supported. It may be compatible with python 3, but I have not checked.
 
 
 
