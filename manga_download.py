@@ -10,6 +10,8 @@ import os
 from collections import namedtuple
 import pdb
 from bs4 import BeautifulSoup
+import argparse
+import sys
 
 
 # In[ ]:
@@ -26,57 +28,75 @@ hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML,
 
 # In[ ]:
 
-# Starting html path of the manga
-site = "http://www.mangareader.net/death-note/1/1"
-# Folder to store the generated images
-folder = 'dn'
-## Make the folder if it is not already made
-try:
-    os.makedirs(folder)
-except:
-    print("Folder already exists")
-# Hardcoded number of chapters
-MAX_CHAP = 109
-chap = 1
-ep = 1
+def download(args):
+    # Starting html path of the manga
+    site = args.site
+    # Folder to store the generated images
+    folder = args.folder
+    ## Make the folder if it is not already made
+    try:
+        os.makedirs(folder)
+    except:
+        print("Folder already exists")
+    # Hardcoded number of chapters
+    MAX_CHAP = args.num_chap
+    chap = 1
+    ep = 1
+
+    """
+    Starts with the given site and updates the number in the filename in the image.
+    Check each filename until you reach the limit of the number of images in the chapter.
+    """
+
+    site_base = '/'.join(site.split('/'))[:-3]
+
+    for chap in range(1,MAX_CHAP+1):
+        ep = 1
+        while(1):
+            # update numbers in the site
+            site = os.path.join(site_base,str(chap),str(ep))
+            # Read the html page with the image
+            req = urllib2.Request(site, headers=hdr)
+            try:
+                page = urllib2.urlopen(req)
+                content = page.read()
+                soup = BeautifulSoup(content, 'html.parser')
+                for link in soup.find_all('img'):
+                    url = link.get('src')
+
+                # Read the image url to get the content of the image
+                req = urllib2.Request(url, headers=hdr)
+                page = urllib2.urlopen(req)
+                content = page.read()
+                try:
+                    os.makedirs(os.path.join(folder,'%s-%03d'%(folder,chap)))
+                except:
+                    pass
+                filename = os.path.join(folder,'%s-%03d'%(folder,chap),'%s-%03d-%03d.jpg'%(folder,chap,ep))
+                ep+=1
+                with open(filename,'w') as fid:
+                    fid.write(content)
+            except:
+                break
+        print(chap)    
 
 
 # In[ ]:
 
-"""
-Starts with the given site and updates the number in the filename in the image.
-Check each filename until you reach the limit of the number of images in the chapter.
-"""
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--site', type=str, default='http://www.mangareader.net/death-note/1/1',
+                        help='URL of the first image in series')
+    parser.add_argument('--num_chap', type=int, default=109,
+                        help='number of chapers you want to download')
+    parser.add_argument('--folder', type=str, default='dn',
+                        help='output folder')
+    args = parser.parse_args()
+    
+    download(args)
 
-site_base = '/'.join(site.split('/'))[:-3]
+# In[ ]:
 
-for chap in range(1,MAX_CHAP+1):
-    ep = 1
-    while(1):
-        # update numbers in the site
-        site = os.path.join(site_base,str(chap),str(ep))
-        # Read the html page with the image
-        req = urllib2.Request(site, headers=hdr)
-        try:
-            page = urllib2.urlopen(req)
-            content = page.read()
-            soup = BeautifulSoup(content, 'html.parser')
-            for link in soup.find_all('img'):
-                url = link.get('src')
-
-            # Read the image url to get the content of the image
-            req = urllib2.Request(url, headers=hdr)
-            page = urllib2.urlopen(req)
-            content = page.read()
-            try:
-                os.makedirs(os.path.join(folder,'%s-%03d'%(folder,chap)))
-            except:
-                pass
-            filename = os.path.join(folder,'%s-%03d'%(folder,chap),'%s-%03d-%03d.jpg'%(folder,chap,ep))
-            ep+=1
-            with open(filename,'w') as fid:
-                fid.write(content)
-        except:
-            break
-    print(chap)    
+if __name__ == '__main__':
+    main()
 
